@@ -1,0 +1,12 @@
+# Lab entrypoint deps — macOS-safe: mock deps PLUS httpx for real Gemini
+# calls. Deliberately does NOT include picamera2/gpiozero (Pi-only, apt-only
+# for picamera2, and gpiozero/lgpio have no meaningful mock backend on
+# macOS) — lab_main.py pairs the REAL recognizer with MOCK hardware, so no
+# camera/GPIO deps are needed. See requirements.txt for the real-Pi deps and
+# requirements-mock.txt for the no-network mock deps this extends.
+
+fastapi==0.115.0
+uvicorn[standard]==0.30.6
+pydantic==2.9.2
+python-multipart==0.0.9
+httpx==0.27.2          # async Gemini calls — the only addition over requirements-mock.txt

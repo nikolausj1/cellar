@@ -18,10 +18,12 @@ pi/
     store.py           # outbound queue + candidate list, JSON on disk, atomic writes
     main.py            # real entrypoint: Gemini + Pi hardware
     mock_main.py        # mock entrypoint: stub recognizer + no hardware (runs on the Mac)
+    lab_main.py         # lab entrypoint: REAL Gemini recognizer + mock hardware (runs on the Mac)
   systemd/cellar-pi.service
   setup.sh            # idempotent Pi provisioning (run on the Pi only)
   requirements.txt        # real service deps (Pi-only: picamera2, gpiozero, ...)
   requirements-mock.txt   # mock deps (macOS-safe)
+  requirements-lab.txt    # mock deps + httpx, no picamera2/gpiozero (macOS-safe)
   .env.example
 ```
 
@@ -80,6 +82,59 @@ curl -s -X DELETE http://127.0.0.1:8000/queue/<id-from-above>
 
 Point the iOS app's Pi base URL at `http://127.0.0.1:8000` (simulator) or
 your Mac's LAN IP (device) while the real Pi doesn't exist yet.
+
+---
+
+## Lab mode: real recognition, no Pi
+
+`mock_main.py` is great for iOS plumbing but never calls Gemini —
+`MockRecognizer` just rotates canned wines. `lab_main.py` pairs the REAL
+`GeminiRecognizer` with `MockHardware`, so you can point the iPhone app at
+your Mac and get genuine wine-label recognition without any Pi hardware.
+This works because `POST /recognize` reads the photo from the client's HTTP
+upload (see `api.py`), not from hardware — mock hardware never limits real
+recognition.
+
+```bash
+cd pi/   # from the repo root
+
+python3 -m venv .venv-lab
+source .venv-lab/bin/activate
+pip install -r requirements-lab.txt
+
+cp .env.example .env   # if you don't already have one
+# edit .env and set GEMINI_API_KEY (source it from ~/.secrets/api-keys.env
+# on the Mac) — never put the real key in any file that gets committed;
+# .env is gitignored, .env.example is the committed template
+
+python -m cellar_pi.lab_main
+# Cellar Pi LAB starting on http://0.0.0.0:8000 — REAL Gemini recognizer, MOCK hardware.
+# Point the iPhone app at: http://<your-mac's-LAN-IP>:8000
+```
+
+`lab_main.py` calls `config.require_gemini_key()` just like `main.py`, so a
+missing/blank `GEMINI_API_KEY` fails loudly at startup with a clear message
+instead of a mysterious 500 on the first `/recognize` call.
+
+```bash
+curl -s http://127.0.0.1:8000/health
+# {"ok":true,"hardware":"mock","recognizer":"gemini","queued":0}
+
+curl -s -X POST http://127.0.0.1:8000/recognize -F "image=@/path/to/bottle.jpg"
+# a real Gemini call, real candidates
+```
+
+**LAN exposure — read before running.** Unlike `mock_main.py` (which
+hardcodes loopback deliberately, see "Deviations from spec" below),
+`lab_main.py` binds `config.host`, which defaults to `0.0.0.0` — a
+LAN-reachable address, not loopback. That's the point: an iPhone on the
+same WiFi needs to reach it directly, with no Pi in between. But there is
+**no authentication** on this server — anyone on the same network can hit
+`POST /recognize` and spend your Gemini quota. This is a lab/dev tool for a
+trusted home network, not a deployment; don't run it on untrusted WiFi and
+don't leave it running unattended for long stretches. `lab_main.py` logs
+its best-effort-detected LAN IP(s) on startup so you can type the URL into
+your phone without hunting for it.
 
 ---
 
