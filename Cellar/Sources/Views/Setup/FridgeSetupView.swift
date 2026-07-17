@@ -25,10 +25,19 @@ struct FridgeSetupView: View {
         ZStack {
             CellarPalette.glassBlackDeep.ignoresSafeArea()
 
-            if shelves.isEmpty {
-                emptyState
-            } else {
-                list
+            VStack(spacing: 0) {
+                if shelves.isEmpty {
+                    Spacer(minLength: 0)
+                    emptyState
+                    Spacer(minLength: 0)
+                } else {
+                    list
+                }
+
+                ScanStationSettingsView()
+                    .padding(.horizontal, 16)
+                    .padding(.top, 12)
+                    .padding(.bottom, 20)
             }
         }
         .navigationTitle("Fridge Setup")
