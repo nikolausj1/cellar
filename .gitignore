@@ -29,3 +29,6 @@ pi/cellar-data/
 
 # macOS
 .DS_Store
+
+# Internal design doc — kept local, not published
+/PRD.md
