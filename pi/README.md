@@ -138,6 +138,38 @@ your phone without hunting for it.
 
 ---
 
+## Measuring recognition accuracy
+
+The PRD's riskiest claim is "≥90% of bottles recognized correctly with no
+hint." `pi/tools/accuracy_run.py` is a stdlib-only script (no venv, no
+`pip install` — run it with bare `python3`) that batches real
+`POST /recognize` calls against whatever service is running (mock, lab, or
+the real Pi) and logs results to a CSV. Scoring correctness is left to a
+human on purpose — only the owner knows what each bottle actually is.
+
+```bash
+# 1. Point it at a directory of bottle photos and a running service.
+#    Default: no hint, matching the PRD's claim. Writes a CSV next to the
+#    photos dir, one row per photo, written incrementally so a crash
+#    partway through a 120-bottle run loses nothing already done.
+python3 pi/tools/accuracy_run.py ~/Desktop/bottle-photos --url http://127.0.0.1:8000
+
+# 2. Open the CSV, fill the empty `verdict` column with y/n per row (only a
+#    human can judge whether the top candidate is actually right), then
+#    score it:
+python3 pi/tools/accuracy_run.py --score ~/Desktop/bottle-photos_accuracy_<timestamp>.csv
+# Overall: 108/120 correct = 90.0%
+# By confidence bucket (checks whether confidence is calibrated): ...
+```
+
+HEIC photos are skipped with a warning: `GeminiRecognizer` always tells
+Gemini the bytes are `image/jpeg` (`recognizer.py`) regardless of the real
+format, so a HEIC upload risks a silent garbage result rather than a clean
+failure — convert to JPEG first. Pass `--hint "some word"` to run the
+hint-assisted path and compare it against a no-hint run.
+
+---
+
 ## Deploy later: the real Pi runbook
 
 Parts required: Pi 4 or 5, Camera Module 3 (autofocus — non-negotiable,
