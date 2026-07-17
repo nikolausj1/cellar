@@ -2,13 +2,16 @@
 //  SmokeTest.swift
 //  Cellar — Engine smoke test
 //
-//  Engine-only. Per the Build Guide's engine-test recipe, this file is copied to
-//  /tmp/main.swift and compiled directly against Sources/Engine/*.swift with
-//  `swiftc` — no Xcode, no XCTest, no SwiftData. Top-level code here runs as the
-//  program's entry point.
+//  Engine-only. Compiled directly against Sources/Engine/*.swift with `swiftc` —
+//  no Xcode, no XCTest, no SwiftData. Top-level code here runs as the program's
+//  entry point. Not a member of any Xcode target; run it by hand:
 //
-//    xattr -cr Sources && cp Tests/SmokeTest.swift /tmp/main.swift && \
-//      swiftc -O Sources/Engine/*.swift /tmp/main.swift -o /tmp/t && /tmp/t
+//    T=$(mktemp -d) && xattr -cr Sources && cp Tests/SmokeTest.swift "$T/main.swift" && \
+//      swiftc -O Sources/Engine/*.swift "$T/main.swift" -o "$T/t" && "$T/t"; rm -rf "$T"
+//
+//  The Build Guide's version of this recipe hardcodes /tmp/main.swift and /tmp/t.
+//  Two projects running it at once clobber each other, and the failure is silent:
+//  a green run against another project's code. Keep the mktemp dir.
 //
 
 import Foundation
