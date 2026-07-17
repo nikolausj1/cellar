@@ -31,9 +31,18 @@ GEMINI_ENDPOINT = (
 
 class RecognizerError(Exception):
     """Recognition/enrichment failed (network, API error, bad response
-    shape). api.py turns this into a 500 so the caller can degrade
+    shape). api.py turns this into a 502 so the caller can degrade
     gracefully — the phone re-queues the photo, the Pi's own capture
-    pipeline still logs the bottle and shows "offline, queued" (PRD §5)."""
+    pipeline still logs the bottle and shows "offline, queued" (PRD §5).
+
+    `upstream_status` carries the HTTP status Gemini itself returned (400,
+    401, 403, 429, ...) when known, so api.py can pick an actionable detail
+    message without parsing error text. None for non-HTTP failures (DNS,
+    timeout, connection refused, bad response shape)."""
+
+    def __init__(self, message: str, upstream_status: int | None = None) -> None:
+        super().__init__(message)
+        self.upstream_status = upstream_status
 
 
 class Recognizer(Protocol):
@@ -236,9 +245,16 @@ class GeminiRecognizer:
                 json=body,
             )
             resp.raise_for_status()
-        except self._httpx.HTTPError as exc:
+        except self._httpx.HTTPStatusError as exc:
             # httpx error text/repr does not include our custom headers, so
             # this cannot leak the key. Do not add exc.request details.
+            logger.warning("Gemini call failed: %s", exc.__class__.__name__)
+            raise RecognizerError(
+                f"Gemini request failed: {exc}", upstream_status=exc.response.status_code
+            ) from exc
+        except self._httpx.HTTPError as exc:
+            # Network-level failure (timeout, DNS, connection refused, ...)
+            # — no upstream status to report.
             logger.warning("Gemini call failed: %s", exc.__class__.__name__)
             raise RecognizerError(f"Gemini request failed: {exc}") from exc
 

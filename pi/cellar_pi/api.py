@@ -93,6 +93,23 @@ class OkResponse(BaseModel):
 # ---------------------------------------------------------------------------
 
 
+def _recognizer_error_detail(exc: RecognizerError) -> str:
+    """Turn a RecognizerError into an actionable 502 detail. When Gemini
+    itself answered, the detail is derived from the status alone — never the
+    raw upstream body. Without an upstream status the message is one
+    recognizer.py authored itself (mock's scenario=fail, "Gemini request
+    failed: timeout", ...) — key-safe by construction there, and worth
+    passing through so a timeout is distinguishable from a rejection."""
+    status = exc.upstream_status
+    if status in (400, 401, 403):
+        return f"Recognizer upstream rejected the request (HTTP {status}) — check GEMINI_API_KEY"
+    if status == 429:
+        return "Recognizer upstream is rate-limited (HTTP 429) — try again shortly"
+    if status is not None:
+        return f"Recognizer upstream failed (HTTP {status})"
+    return str(exc)
+
+
 def create_app(recognizer: Recognizer, hardware: Hardware, store: Store) -> FastAPI:
     app = FastAPI(title="Cellar Pi", version="0.1.0")
 
@@ -123,7 +140,10 @@ def create_app(recognizer: Recognizer, hardware: Hardware, store: Store) -> Fast
             # Honest failure, not a floor on confidence. The phone treats
             # this like any other network failure and queues the photo
             # itself (PRD §6.2) — the Pi never pretends to have an answer.
-            raise HTTPException(status_code=500, detail=str(exc)) from exc
+            # 502 (bad gateway), not 500: the Pi itself is fine, it's the
+            # upstream recognizer that rejected/failed the call.
+            logger.warning("recognize: recognizer failed: %s", exc)
+            raise HTTPException(status_code=502, detail=_recognizer_error_detail(exc)) from exc
         return result
 
     @app.post("/enrich", response_model=EnrichResponse)
@@ -131,7 +151,8 @@ def create_app(recognizer: Recognizer, hardware: Hardware, store: Store) -> Fast
         try:
             result = await recognizer.enrich(payload.model_dump())
         except RecognizerError as exc:
-            raise HTTPException(status_code=500, detail=str(exc)) from exc
+            logger.warning("enrich: recognizer failed: %s", exc)
+            raise HTTPException(status_code=502, detail=_recognizer_error_detail(exc)) from exc
         return result
 
     @app.get("/queue", response_model=QueueResponse)
