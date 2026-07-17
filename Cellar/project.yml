@@ -1,0 +1,48 @@
+name: Cellar
+
+options:
+  bundleIdPrefix: com.levelup
+  deploymentTarget:
+    iOS: "18.0"
+  createIntermediateGroups: true
+  groupSortPosition: top
+
+settings:
+  base:
+    DEVELOPMENT_TEAM: 6A4J2GTB6F
+    MARKETING_VERSION: "1.0"
+    CURRENT_PROJECT_VERSION: 1
+    SWIFT_VERSION: "5.0"
+    ENABLE_USER_SCRIPT_SANDBOXING: NO
+
+targets:
+  Cellar:
+    type: application
+    platform: iOS
+    sources:
+      - path: Sources
+    settings:
+      base:
+        PRODUCT_BUNDLE_IDENTIFIER: com.levelup.cellar
+        TARGETED_DEVICE_FAMILY: 1
+        SWIFT_EMIT_LOC_STRINGS: YES
+    info:
+      path: Sources/Info.plist
+      properties:
+        CFBundleDisplayName: Cellar
+        CFBundleShortVersionString: $(MARKETING_VERSION)
+        CFBundleVersion: $(CURRENT_PROJECT_VERSION)
+        UILaunchScreen: {}
+        UISupportedInterfaceOrientations:
+          - UIInterfaceOrientationPortrait
+        # Build Guide: skips the TestFlight encryption-compliance prompt
+        ITSAppUsesNonExemptEncryption: false
+        # Camera is the only input device this app has
+        NSCameraUsageDescription: "Cellar reads wine labels so you never have to type."
+        NSPhotoLibraryAddUsageDescription: "Save photos of the bottles and meals you record."
+        # Talking to the Pi over the LAN requires BOTH of these or the call
+        # silently fails on-device. ATS blocks plain http:// without the
+        # exception; iOS 14+ blocks LAN access without the usage string.
+        NSLocalNetworkUsageDescription: "Cellar talks to your Pi scan station to identify bottles."
+        NSAppTransportSecurity:
+          NSAllowsLocalNetworking: true

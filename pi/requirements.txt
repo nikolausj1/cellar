@@ -1,0 +1,20 @@
+# Real Pi service deps. Install into a venv created with --system-site-packages
+# (see setup.sh) so picamera2 — which is apt-only, not on PyPI — is visible.
+#
+# Do NOT try to `pip install` these on macOS; picamera2 will fail to build
+# and gpiozero/lgpio have no meaningful mock backend. Use requirements-mock.txt
+# and mock_main.py on the Mac instead.
+
+fastapi==0.115.0
+uvicorn[standard]==0.30.6
+pydantic==2.9.2
+python-multipart==0.0.9
+httpx==0.27.2          # async Gemini calls
+
+# Hardware. picamera2 is installed via apt (python3-picamera2), NOT pip —
+# listed here only as documentation; setup.sh installs it through apt and
+# the venv is created with --system-site-packages to see it.
+# picamera2
+
+gpiozero==2.0.1
+lgpio==0.2.2.0          # gpiozero's pin factory on Pi 4/5 + Bookworm

@@ -1,0 +1,13 @@
+# Mock entrypoint deps — macOS-safe, no Pi packages.
+#
+# NOTE: python-multipart is required in addition to fastapi/uvicorn/pydantic.
+# POST /recognize accepts a multipart file upload (`image`) plus form fields
+# (`hint`, `scenario`) per the API contract; Starlette/FastAPI raise at
+# request time ("Form data requires 'python-multipart' to be installed")
+# without it. There is no way to serve that endpoint without it, so it is
+# included here despite the "fastapi, uvicorn, pydantic ONLY" note in the
+# spec — see pi/README.md "Deviations from spec" for why.
+fastapi==0.115.0
+uvicorn[standard]==0.30.6
+pydantic==2.9.2
+python-multipart==0.0.9

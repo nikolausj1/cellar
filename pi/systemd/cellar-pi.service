@@ -1,0 +1,19 @@
+[Unit]
+Description=Cellar Pi scan station (camera + button + Gemini proxy)
+After=network-online.target
+Wants=network-online.target
+
+[Service]
+ExecStart=/home/pi/cellar-pi/pi/.venv/bin/python -m cellar_pi.main
+WorkingDirectory=/home/pi/cellar-pi/pi
+User=pi
+Restart=always
+RestartSec=5
+EnvironmentFile=/home/pi/cellar-pi/pi/.env
+
+# GEMINI_API_KEY lives only in .env (never in this unit file, never
+# committed). config.py fails loudly at startup if it's missing, so a
+# broken .env shows up immediately in `systemctl status`, not on first scan.
+
+[Install]
+WantedBy=multi-user.target

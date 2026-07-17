@@ -1,0 +1,31 @@
+# Xcode / XcodeGen — .xcodeproj is generated, project.yml is source of truth
+*.xcodeproj
+*.xcworkspace
+DerivedData/
+build/
+.build/
+*.xcuserstate
+xcuserdata/
+
+# Build Guide: cross-project docs and Justin<->Claude channels never ship
+Project Build Guide.md
+PRD Template.md
+_inbox/
+_review/
+
+# Secrets — never, under any circumstances
+.env
+*.p8
+*.pem
+
+# Python (Pi service)
+__pycache__/
+*.pyc
+.venv*/
+venv/
+
+# Pi runtime state — written by the service at run time, not source
+pi/cellar-data/
+
+# macOS
+.DS_Store
