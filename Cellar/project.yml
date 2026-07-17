@@ -26,13 +26,22 @@ targets:
         PRODUCT_BUNDLE_IDENTIFIER: com.levelup.cellar
         TARGETED_DEVICE_FAMILY: 1
         SWIFT_EMIT_LOC_STRINGS: YES
+        # XcodeGen's iOS app template defaults this to "AppIcon", which was
+        # latent (no Assets.xcassets existed to fail against) until this work
+        # package added one for LaunchBackground. No app icon set exists —
+        # that's out of scope here — so this is blanked to keep actool from
+        # requiring one.
+        ASSETCATALOG_COMPILER_APPICON_NAME: ""
     info:
       path: Sources/Info.plist
       properties:
         CFBundleDisplayName: Cellar
         CFBundleShortVersionString: $(MARKETING_VERSION)
         CFBundleVersion: $(CURRENT_PROJECT_VERSION)
-        UILaunchScreen: {}
+        # LaunchBackground (Assets.xcassets) is the app's own glassBlackDeep —
+        # cold start shows that, not a white flash, before SwiftUI ever draws.
+        UILaunchScreen:
+          UIColorName: LaunchBackground
         UISupportedInterfaceOrientations:
           - UIInterfaceOrientationPortrait
         # Build Guide: skips the TestFlight encryption-compliance prompt

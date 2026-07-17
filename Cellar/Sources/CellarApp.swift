@@ -35,6 +35,11 @@
 //                        CameraCaptureCore's own auto-capture hook fire the
 //                        shutter with no tap — see FakeCameraSupport and the
 //                        verification report for what this proves.
+//    -showOnboarding     forces OnboardingView regardless of whether the
+//                        one-time flag has already been set
+//    -onboardingPage N   (requires -showOnboarding) jumps straight to page N
+//                        (0-2) — simctl can't swipe a TabView, so this is the
+//                        only way to screenshot pages 2 and 3
 //
 
 import SwiftUI
@@ -78,64 +83,106 @@ struct CellarApp: App {
         } else {
             _addOverlay = State(initialValue: nil)
         }
+
+        // OnboardingView owns the write side of this flag (mirrors
+        // hasSeenCameraCoach); this is the one place that has to read it
+        // before that view exists, to decide whether to present it at all.
+        let hasSeenOnboarding = UserDefaults.standard.bool(forKey: Self.hasSeenOnboardingKey)
+        let showOnboardingNow = args.contains("-showOnboarding") || !hasSeenOnboarding
+        _onboardingPresented = State(initialValue: showOnboardingNow)
+        // Splash is the cold-launch brand beat for the "straight to the map"
+        // path. When onboarding is about to show, it already IS that beat —
+        // stacking the splash in front of it would be two logo moments back
+        // to back.
+        _splashPresented = State(initialValue: !showOnboardingNow)
+
+        var onboardingPage = 0
+        if let idx = args.firstIndex(of: "-onboardingPage"), idx + 1 < args.count, let n = Int(args[idx + 1]) {
+            onboardingPage = n
+        }
+        _onboardingInitialPage = State(initialValue: onboardingPage)
     }
+
+    private static let hasSeenOnboardingKey = "Cellar.hasSeenOnboarding"
 
     var body: some Scene {
         WindowGroup {
-            NavigationStack {
-                FridgeMapView(
-                    onSelectBottle: { _ in
-                        // TODO(bottle-detail worker): push to Bottle Detail.
-                    },
-                    onSelectEmptySlot: { address in
-                        addOverlay = .single(preTargetedSlot: address)
-                    },
-                    onTapCamera: {
-                        addOverlay = .single(preTargetedSlot: nil)
-                    },
-                    onOpenSetup: {
-                        setupPresented = true
-                    },
-                    onTapReviewQueue: {
-                        reviewQueuePresented = true
-                    },
-                    onTapMemoryCard: { _ in
-                        // TODO(memory-cascade worker): open the memory prompt.
-                    }
-                )
-                .navigationDestination(isPresented: $setupPresented) {
-                    FridgeSetupView()
-                }
-            }
-            .tint(CellarPalette.ledGlow)
-            .fullScreenCover(item: $addOverlay) { overlay in
-                switch overlay {
-                case let .single(preTargetedSlot):
-                    AddFlowView(
-                        preTargetedSlot: preTargetedSlot,
-                        onFinished: { addOverlay = nil },
-                        onEnterBulkMode: { addOverlay = .bulk },
-                        recognitionQueue: recognitionQueue
-                    )
-                case .bulk:
-                    BulkAddFlowView(onFinished: { addOverlay = nil }, recognitionQueue: recognitionQueue)
-                }
-            }
-            .fullScreenCover(isPresented: $bulkSlottingScreenshotPresented) {
-                BulkSlottingScreenshotHost(onFinished: { bulkSlottingScreenshotPresented = false })
-            }
-            .sheet(isPresented: $reviewQueuePresented) {
+            ZStack {
                 NavigationStack {
-                    ReviewQueueView(recognitionQueue: recognitionQueue)
+                    FridgeMapView(
+                        onSelectBottle: { _ in
+                            // TODO(bottle-detail worker): push to Bottle Detail.
+                        },
+                        onSelectEmptySlot: { address in
+                            addOverlay = .single(preTargetedSlot: address)
+                        },
+                        onTapCamera: {
+                            addOverlay = .single(preTargetedSlot: nil)
+                        },
+                        onOpenSetup: {
+                            setupPresented = true
+                        },
+                        onTapReviewQueue: {
+                            reviewQueuePresented = true
+                        },
+                        onTapMemoryCard: { _ in
+                            // TODO(memory-cascade worker): open the memory prompt.
+                        }
+                    )
+                    .navigationDestination(isPresented: $setupPresented) {
+                        FridgeSetupView()
+                    }
+                }
+                .tint(CellarPalette.ledGlow)
+                .fullScreenCover(item: $addOverlay) { overlay in
+                    switch overlay {
+                    case let .single(preTargetedSlot):
+                        AddFlowView(
+                            preTargetedSlot: preTargetedSlot,
+                            onFinished: { addOverlay = nil },
+                            onEnterBulkMode: { addOverlay = .bulk },
+                            recognitionQueue: recognitionQueue
+                        )
+                    case .bulk:
+                        BulkAddFlowView(onFinished: { addOverlay = nil }, recognitionQueue: recognitionQueue)
+                    }
+                }
+                .fullScreenCover(isPresented: $bulkSlottingScreenshotPresented) {
+                    BulkSlottingScreenshotHost(onFinished: { bulkSlottingScreenshotPresented = false })
+                }
+                .sheet(isPresented: $reviewQueuePresented) {
+                    NavigationStack {
+                        ReviewQueueView(recognitionQueue: recognitionQueue)
+                    }
+                }
+                .task {
+                    // PRD acceptance: "Kill the Pi mid-session: adds continue,
+                    // nothing is lost, queue drains on restart." This resumes
+                    // whatever RecognitionQueue's on-disk pending list had left
+                    // over from a previous run. Not on THE RULE's hot path —
+                    // this happens once, at launch, off to the side.
+                    await recognitionQueue.resumePending()
+                }
+
+                // The one branded beat on a cold launch that opens straight to
+                // the map (see init(): mutually exclusive with onboarding, which
+                // is its own branded beat). Sits above the map in the ZStack and
+                // self-dismisses via onFinished.
+                if splashPresented {
+                    SplashView(onFinished: { splashPresented = false })
+                        .zIndex(1)
                 }
             }
-            .task {
-                // PRD acceptance: "Kill the Pi mid-session: adds continue,
-                // nothing is lost, queue drains on restart." This resumes
-                // whatever RecognitionQueue's on-disk pending list had left
-                // over from a previous run. Not on THE RULE's hot path —
-                // this happens once, at launch, off to the side.
-                await recognitionQueue.resumePending()
+            .fullScreenCover(isPresented: $onboardingPresented) {
+                OnboardingView(
+                    onFinished: { openSetup in
+                        onboardingPresented = false
+                        if openSetup {
+                            setupPresented = true
+                        }
+                    },
+                    initialPage: onboardingInitialPage
+                )
             }
         }
         .modelContainer(demoContainer ?? realContainer)
@@ -161,6 +208,9 @@ struct CellarApp: App {
     @State private var reviewQueuePresented = false
     @State private var bulkSlottingScreenshotPresented = false
     @State private var addOverlay: AddOverlay?
+    @State private var onboardingPresented = false
+    @State private var splashPresented = false
+    @State private var onboardingInitialPage = 0
 }
 
 /// What full-screen add experience (if any) is presented right now.
