@@ -14,6 +14,37 @@ import os
 from dataclasses import dataclass
 from pathlib import Path
 
+# pi/.env, next to this package. On the Pi, systemd exports it via
+# EnvironmentFile= before the process starts; on a Mac running the mock or
+# lab entrypoint nothing does, so without this loader the README's "copy
+# .env.example to .env and run" recipe fails with a missing-key error.
+ENV_FILE = Path(__file__).resolve().parent.parent / ".env"
+
+
+def _load_env_file(path: Path) -> None:
+    """Export KEY=VALUE lines from `path` into the process environment.
+
+    Mirrors systemd's EnvironmentFile semantics closely enough to matter:
+    blank lines and `#` comments are skipped, an optional `export ` prefix
+    and matching surrounding quotes are stripped, and a variable that is
+    already set in the environment is never overridden, so a real deployment
+    or an explicit shell export always wins over the file.
+    """
+    if not path.is_file():
+        return
+    for raw in path.read_text(encoding="utf-8").splitlines():
+        line = raw.strip()
+        if not line or line.startswith("#") or "=" not in line:
+            continue
+        if line.startswith("export "):
+            line = line[len("export "):]
+        key, _, value = line.partition("=")
+        key, value = key.strip(), value.strip()
+        if len(value) >= 2 and value[0] == value[-1] and value[0] in "\"'":
+            value = value[1:-1]
+        if key:
+            os.environ.setdefault(key, value)
+
 
 def _env_str(name: str, default: str | None = None) -> str | None:
     value = os.environ.get(name)
@@ -43,6 +74,7 @@ class Config:
 
     @classmethod
     def from_env(cls) -> "Config":
+        _load_env_file(ENV_FILE)
         return cls(
             host=_env_str("CELLAR_HOST", "0.0.0.0"),
             port=_env_int("CELLAR_PORT", 8000),
