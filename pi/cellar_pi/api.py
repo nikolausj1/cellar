@@ -103,6 +103,10 @@ def _recognizer_error_detail(exc: RecognizerError) -> str:
     status = exc.upstream_status
     if status in (400, 401, 403):
         return f"Recognizer upstream rejected the request (HTTP {status}) — check GEMINI_API_KEY"
+    if status == 402:
+        # Seen for real on 2026-10-24: a valid key whose AI Studio project had
+        # run out of prepaid credit. Not a key problem, a billing one.
+        return "Recognizer upstream is out of credit (HTTP 402) — top up the Google AI Studio project"
     if status == 429:
         return "Recognizer upstream is rate-limited (HTTP 429) — try again shortly"
     if status is not None:
