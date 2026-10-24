@@ -42,6 +42,13 @@ struct ShelfRowView: View {
 
     private var slotsRow: some View {
         HStack(spacing: 0) {
+            // The shelf's letter, as written on the fridge, so the map and
+            // the cabinet agree on where "F" is without counting rows.
+            Text(shelf.letter)
+                .cellarLabelType(size: 10)
+                .foregroundStyle(.white.opacity(0.35))
+                .frame(width: 16, alignment: .leading)
+
             ForEach(0..<max(shelf.slotCount, 0), id: \.self) { slot in
                 let address = SlotAddress(shelfIndex: shelf.index, slot: slot)
                 Group {
@@ -61,7 +68,8 @@ struct ShelfRowView: View {
             }
         }
         .frame(maxWidth: .infinity)
-        .padding(.horizontal, 14)
+        .padding(.leading, 8)
+        .padding(.trailing, 14)
     }
 
     private var woodDivider: some View {

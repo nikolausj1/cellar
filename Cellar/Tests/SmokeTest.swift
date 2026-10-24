@@ -138,6 +138,17 @@ check(!duplicateLayout.isConfigurationValid, "layout with duplicate shelf indice
 checkEqual(layout.shelf(at: 1)?.slotCount, 6, "shelf(at:) finds the right shelf")
 check(layout.shelf(at: 99) == nil, "shelf(at:) returns nil for a nonexistent shelf")
 
+// shelf naming — must match the letters written on the physical fridge
+checkEqual(ShelfNaming.letter(forIndex: 0), "A", "top shelf is A")
+checkEqual(ShelfNaming.letter(forIndex: 12), "M", "13th shelf is M")
+checkEqual(ShelfNaming.letter(forIndex: 13), "N", "floor row is N")
+checkEqual(ShelfNaming.letter(forIndex: 25), "Z", "26th shelf is Z")
+checkEqual(ShelfNaming.letter(forIndex: 26), "AA", "27th shelf rolls over to AA, spreadsheet style")
+checkEqual(ShelfNaming.letter(forIndex: -1), "?", "negative index is a placeholder, never a crash")
+checkEqual(storageShelfA.letter, "B", "ShelfLayout.letter derives from index")
+checkEqual(SlotAddress(shelfIndex: 5, slot: 2).label, "F3", "address label is letter plus 1-based slot")
+checkEqual(SlotAddress(shelfIndex: 0, slot: 0).label, "A1", "first slot of the top shelf is A1")
+
 // address validation — valid cases
 check(layout.isValid(SlotAddress(shelfIndex: 0, slot: 0)), "first slot of shelf 0 is valid")
 check(layout.isValid(SlotAddress(shelfIndex: 0, slot: 3)), "last slot of shelf 0 is valid")

@@ -36,7 +36,7 @@ struct SlotView: View {
                     emptyCutout
                 }
                 .buttonStyle(.plain)
-                .accessibilityLabel("Empty slot, shelf \(address.shelfIndex + 1), position \(address.slot + 1)")
+                .accessibilityLabel("Empty slot \(address.label)")
             }
         }
         .frame(width: diameter, height: diameter)

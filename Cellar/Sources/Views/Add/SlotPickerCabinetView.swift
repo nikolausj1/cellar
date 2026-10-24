@@ -82,6 +82,13 @@ private struct PickerShelfRow: View {
                 .frame(height: 46)
 
                 HStack(spacing: 0) {
+                    // Letter as written on the fridge: when placing a bottle
+                    // this is the row you are matching against by hand.
+                    Text(shelf.letter)
+                        .cellarLabelType(size: 10)
+                        .foregroundStyle(.white.opacity(0.35))
+                        .frame(width: 16, alignment: .leading)
+
                     ForEach(0..<max(shelf.slotCount, 0), id: \.self) { slot in
                         let address = SlotAddress(shelfIndex: shelf.index, slot: slot)
                         PickerSlotCell(
@@ -96,7 +103,8 @@ private struct PickerShelfRow: View {
                     }
                 }
                 .frame(maxWidth: .infinity)
-                .padding(.horizontal, 14)
+                .padding(.leading, 8)
+                .padding(.trailing, 14)
                 .padding(.bottom, 6)
             }
 
@@ -136,7 +144,7 @@ private struct PickerSlotCell: View {
                     freeCutout
                 }
                 .buttonStyle(.plain)
-                .accessibilityLabel("Place here, shelf \(address.shelfIndex + 1), position \(address.slot + 1)")
+                .accessibilityLabel("Place here, \(address.label)")
             } else {
                 freeCutout
                     .opacity(0.5)

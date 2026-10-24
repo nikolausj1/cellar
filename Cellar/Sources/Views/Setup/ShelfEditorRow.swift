@@ -21,7 +21,7 @@ struct ShelfEditorRow: View {
     var body: some View {
         VStack(alignment: .leading, spacing: 14) {
             HStack {
-                Text("Shelf \(position + 1)")
+                Text("Shelf \(ShelfNaming.letter(forIndex: position))")
                     .cellarLabelType(size: 12)
                     .foregroundStyle(.white.opacity(0.55))
 

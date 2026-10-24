@@ -224,7 +224,7 @@ private struct BulkThumbnailCard: View {
     private var locationText: String {
         switch bottle.location {
         case .boxes: "Boxes"
-        case let .fridge(shelf, slot): "S\(shelf + 1)·\(slot + 1)"
+        case let .fridge(shelf, slot): SlotAddress(shelfIndex: shelf, slot: slot).label
         }
     }
 }

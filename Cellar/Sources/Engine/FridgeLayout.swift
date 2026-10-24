@@ -43,6 +43,34 @@ public struct ShelfLayout: Codable, Hashable, Sendable {
     }
 }
 
+// MARK: - Shelf naming
+
+/// Shelves are lettered from the top (A, B, C ...) and slots numbered from
+/// the left as you face the open door (1, 2, 3 ...). This is the system
+/// written on the physical fridge, so every label the app shows uses it:
+/// a bottle at `F3` in the app is at `F3` in the cabinet. Internally shelves
+/// and slots stay zero-based; only presentation goes through here.
+public enum ShelfNaming {
+    /// 0 → "A", 25 → "Z", 26 → "AA". Spreadsheet-column style, so it never
+    /// runs out and never collides with the slot number that follows it.
+    public static func letter(forIndex index: Int) -> String {
+        guard index >= 0 else { return "?" }
+        var n = index
+        var out = ""
+        repeat {
+            let scalar = UnicodeScalar(UInt8(65 + n % 26))
+            out = String(Character(scalar)) + out
+            n = n / 26 - 1
+        } while n >= 0
+        return out
+    }
+}
+
+public extension ShelfLayout {
+    /// The shelf's letter in the physical system: top shelf is "A".
+    var letter: String { ShelfNaming.letter(forIndex: index) }
+}
+
 // MARK: - A single (shelf, slot) address
 
 public struct SlotAddress: Hashable, Codable, Sendable {
@@ -52,6 +80,12 @@ public struct SlotAddress: Hashable, Codable, Sendable {
     public init(shelfIndex: Int, slot: Int) {
         self.shelfIndex = shelfIndex
         self.slot = slot
+    }
+
+    /// Human-facing address matching the physical system, e.g. "F3":
+    /// shelf letter plus 1-based slot number.
+    public var label: String {
+        "\(ShelfNaming.letter(forIndex: shelfIndex))\(slot + 1)"
     }
 }
 
